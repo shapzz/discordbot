@@ -1,0 +1,96 @@
+from discord.ext import commands, tasks
+import discord
+from dataclasses import dataclass
+import datetime
+import pytz
+
+br_tz = pytz.timezone('America/Sao_Paulo')
+
+
+# bot_token = Aqui fica o código do bot, você precisa ir até https://discord.com/developers/applications e criar o bot por lá primeiro.
+channel_id = 1098730132946034748
+pausa_estudos_min = 30
+
+@dataclass
+class Estudos:
+    is_active: bool = False
+    start_time: int = 0
+
+
+bot = commands.Bot(command_prefix="$", intents=discord.Intents.all())
+estudo = Estudos()
+
+@bot.event
+async def on_ready():
+    channel = bot.get_channel(channel_id)
+    await channel.send("Olá! o shapz.bot ta pronto!")
+
+@bot.command()
+async def oi(ctx):
+    await ctx.send("Oi! em que posso ajudar?")
+
+
+@bot.command()
+async def maiordorio(msg):
+    await msg.send("FLUMINENSE!")
+
+
+@bot.command()
+async def campeaocarioca(msg):
+    await msg.send("FLUMINENSE FUTEBOL CLUBE! 4x1 NELES")
+
+
+@bot.command()
+async def criador(msg):
+    await msg.send("!shapz#0244!")
+
+
+@bot.command()
+async def comandos(msg):
+    await msg.send('''$oi
+$maiordorio
+$campeaocarioca
+$start
+$end
+$criador''')
+
+
+@tasks.loop(minutes=pausa_estudos_min, count=2)
+async def pausa_estudos():
+
+    if pausa_estudos.current_loop == 0:
+        return
+
+    channel = bot.get_channel(channel_id)
+    if not estudo.is_active:
+        return
+    else:
+        await channel.send(f"**Da uma pausa amigo!** Você já está estudando à {pausa_estudos_min} minutos.")
+
+
+@bot.command()
+async def start(ctx):
+    if estudo.is_active:
+        await ctx.send("A sessão de estudo está ativa")
+        return
+
+    estudo.is_active = True
+    estudo.start_time = ctx.message.created_at.timestamp()
+    human_readable_time = datetime.datetime.now(br_tz).strftime("%X")
+    pausa_estudos.start()
+    await ctx.send(f"A sessão de estudos começou ás {human_readable_time}")
+
+@bot.command()
+async def end(ctx):
+    if not estudo.is_active:
+        await ctx.send("Nenhuma sessão de estudos ativa!")
+        return
+
+    estudo.is_active = False
+    end_time = ctx.message.created_at.timestamp()
+    duration = end_time - estudo.start_time
+    human_readable_duration = str(datetime.timedelta(seconds=int(duration)))
+    pausa_estudos.stop()
+    await ctx.send(f"A sessão de estudos terminou após {human_readable_duration}.")
+
+bot.run(bot_token)
